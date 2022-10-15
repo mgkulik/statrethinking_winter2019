@@ -1,0 +1,139 @@
+---
+title: "Week 1"
+author: "Mariane Goncalves Kulik"
+date: "10/15/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+All coding from the slides...
+
+```{r all, include = TRUE}
+
+library(rethinking)
+
+# ------------ Computing the posterior --
+
+p_grid <- seq(from=0, to=1, length.out = 1000)
+prob_p <- rep(1, 1000)
+prob_data <- dbinom(6, size=9, prob=p_grid)
+posterior <- prob_data*prob_p
+posterior <- posterior/sum(posterior)
+
+# ------------ Sampling from the posterior --
+
+samples <- sample(p_grid, prob=posterior, size=1e4, replace=TRUE)
+
+# Percentil intervals (PI): equal area in each tail
+PI(samples, prob=.5)
+# Highest posterior density intervals (HPDI): narrowest interval containing mass
+HPDI(samples, prob=.5)
+
+# ------------ Predictive checks --
+
+nw <- rbinom(1e4, size=9, prob=samples)
+                  
+```
+
+## Week 1
+
+1. Suppose the globe tossing data had turned out to be 8 water in 15 tosses.
+Construct the posterior distribution, using grid approximation. Use the same 
+flat prior as before.
+
+```{r ex1}
+
+p_grid <- seq(from=0, to=1, length.out = 1000)
+prior <- rep(1, 1000)
+prob_data <- dbinom(8, size=15, prob=p_grid)
+posterior <- prob_data * prior
+posterior <- posterior/sum(posterior)
+
+# He didn't show how to plot yet, so I looked at the solution to know if my results are right:
+summary(posterior) # The mean is not even far from 0.53.
+
+```
+
+```{r ex1_check2}
+
+set.seed(100)
+samples <- sample(p_grid, prob=posterior, size=1e4, replace=TRUE)
+HPDI(samples, prob=.99) # This seams OK - 0.24 to 0.81
+
+```
+
+2. Start over in 1, but now use a prior that is zero below p = 0.5 and a con-
+stant above p = 0.5. This corresponds to prior information that a majority
+of the Earth’s surface is water. What difference does the better prior make?
+If it helps, compare posterior distributions (using both priors) to the true
+value p = 0.7.
+
+```{r ex2}
+
+p_grid <- seq(from=0, to=1, length.out = 1000)
+prob_p <- c(rep(0, 500), rep(1, 500))   # I modified only the prior here
+prob_data <- dbinom(8, size=15, prob=p_grid)
+posterior <- prob_data*prob_p
+posterior <- posterior/sum(posterior)
+
+#check1
+summary(posterior) # Also far from .61
+
+```
+
+```{r ex2_check2}
+
+set.seed(100)
+samples2 <- sample(p_grid, prob=posterior, size=1e4, replace=TRUE)
+HPDI(samples2, prob=.99) # This seams OK - 0.5 to 0.82
+
+```
+
+
+```{r ex2_check3}
+
+# Posterior should show more mass around the true p=0.7
+
+dens(samples, xlab="p", xlim=c(0,1), ylim=c(0,6))
+dens(samples2, add=TRUE, lty=2)
+abline(v=.7, col="red")
+
+```
+
+3. This problem is more open-ended than the others. Feel free to collaborate 
+on the solution. Suppose you want to estimate the Earth’s proportion of
+water very precisely. Specifically, you want the 99% percentile interval of the
+posterior distribution of p to be only 0.05 wide. This means the distance be-
+tween the upper and lower bound of the interval should be 0.05. How many
+times will you have to toss the globe to do this? I won’t require a precise
+answer. I’m honestly more interested in your approach.
+
+```{r ex3}
+
+# Idea 1: Simulate with higher values of N and simulate with predictive checks
+# It probably will not work because this approach is more cautious.
+
+# He provided in the solution another valuable info: TRUE p=0.7.
+# My approach is not totally wrong, but some changes would be required besides the change in N
+
+set.seed(100)
+N <- 20
+p_true <- 0.7 
+W <- rbinom(1, size=N, prob=p_true)
+
+# This is the same
+p_grid <- seq(from=0, to=1, length.out = 1000)
+prob_p <- c(rep(0, 500), rep(1, 500))   # I modified only the prior here
+prob_data <- dbinom(W, size=N, prob=p_grid)
+posterior <- prob_data*prob_p
+posterior <- posterior/sum(posterior)
+
+samples3 <- sample(p_grid, prob=posterior, size=1e4, replace=TRUE)
+
+PI99 <- PI(samples, .99)
+as.numeric(PI99[2]-PI99[1])
+
+```
